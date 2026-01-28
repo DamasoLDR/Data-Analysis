@@ -3,6 +3,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# =============== Funções ==================
+def BRL(n):
+    res = f'R${n:.2f}'.replace('.', ',')
+    return res
+
 # ================== API =====================
 url = 'https://api.hgbrasil.com/finance/taxes'
 
@@ -17,13 +22,13 @@ st.title('Calculadora de Juros Compostos')
 
 st.header('SIMULADOR DE JUROS COMPOSTOS (Selic)')   
 
-st.write('**Taxa Selic Hoje:** ', taxa_selic, '%') # Taxa selic anual
+st.write('**Taxa Selic Hoje:** ', taxa_selic, '%')       # Taxa selic anual
 
-vi = st.number_input('Valor Inicial (R$)')         # Valor Inicial do Aporte
-t = st.number_input('Périodo em meses', value=0)   # meses
-im = st.number_input('Investimento Mensal (R$)')   # Aporte mensal
+vi = st.number_input('Valor Inicial (R$)')               # Valor Inicial do Aporte
+t = st.number_input('Périodo em meses', step=1, value=0) # meses
+im = st.number_input('Investimento Mensal (R$)')         # Aporte mensal
 
-i = taxa_selic / 100 / 12             # Taxa selic mensal em %
+i = taxa_selic / 100 / 12                                # Taxa selic mensal em %
 
 # ==================================== Calculando ================================
 if st.button('Calcular'):
@@ -33,11 +38,11 @@ if st.button('Calcular'):
         m = vi * (1 + i) ** t +im * ((1 + i) ** t - 1) / i  # Montante final
         vti = im*t + vi                                     # Total Investido
         tj = m - vti                                        # Total Juros
-        nm = [f'{m:.2f}', f'{vti:.2f}', f'{tj:.2f}']        # Os valores formatados
+
         st.header('RESULTADO: ')
-        st.write('**Valor Total Final:** R$', nm[0])
-        st.write('**Valor Total Investido:** R$', nm[1])
-        st.write('**Total juros:** R$', nm[2])
+        st.write('**Valor Total Final:** ', BRL(m))
+        st.write('**Valor Total Investido:** ', BRL(vti))
+        st.write('**Total juros:** ', BRL(tj))
 
         table = {
             'Meses':[],
@@ -59,13 +64,20 @@ if st.button('Calcular'):
             table['Acumulado'].append(im*c + vi + table['Total Juros'][c])
             table['Meses'].append(meses)
             meses += 1
+        
         df = pd.DataFrame(table)
+
+        df_table = df.style.format({'Juros': 'R${:,.2f}', 'Total Juros': 'R${:,.2f}', 'Total Investido': 'R${:,.2f}', 'Acumulado': 'R${:,.2f}'})
         
-        df_invest = df.style.format({'Juros': 'R${:,.2f}', 'Total Juros': 'R${:,.2f}', 'Total Investido': 'R${:,.2f}', 'Acumulado': 'R${:,.2f}', })
-        
+        df_graph = pd.DataFrame({
+            'Apenas guardando':table['Total Investido'],
+            'Investindo':table['Acumulado'],
+            'Meses':table['Meses']
+            })
+
         st.header('Gráfico')
-        fig = px.line(df, x='Meses', y=['Acumulado', 'Total Investido'])
+        fig = px.line(df_graph, x='Meses', y=['Investindo','Apenas guardando'])
         st.plotly_chart(fig)
 
         st.header('Tabela')
-        df_invest
+        st.dataframe(df_table, hide_index=True)
